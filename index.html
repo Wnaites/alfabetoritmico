@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,13 +9,14 @@
     <!-- Fonte lúdica para crianças -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div id="game-container">
         <!-- Tela Inicial -->
         <div id="start-screen" class="screen active">
             <h1>Alfabeto Rítmico</h1>
             <p>Aprenda o tempo musical de forma divertida!</p>
-            
+
             <div class="difficulty-selector">
                 <h3>Escolha sua idade:</h3>
                 <div class="buttons">
@@ -32,8 +34,14 @@
         <div id="play-screen" class="screen">
             <div class="top-bar">
                 <div class="score-box">Pontuação: <span id="score">0</span></div>
+                <div class="level-indicator">Fase: <span id="current-letter">A</span></div>
                 <div class="combo-box">Combo: <span id="combo">0</span>x</div>
                 <button id="btn-stop-game" class="small-btn">Sair</button>
+            </div>
+
+            <!-- Countdown Overlay -->
+            <div id="countdown-overlay" class="overlay hidden">
+                <div class="count-text" id="countdown-text">3</div>
             </div>
 
             <!-- Área principal de renderização do jogo visual -->
@@ -47,7 +55,7 @@
                 Mantenha o ritmo! Toque seu instrumento junto com as batidas.
             </div>
         </div>
-        
+
         <!-- Tela de Fim de Jogo -->
         <div id="end-screen" class="screen">
             <h2>Fim de Jogo!</h2>
@@ -69,4 +77,5 @@
     <script src="render.js"></script>
     <script src="main.js"></script>
 </body>
+
 </html>

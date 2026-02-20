@@ -1,136 +1,162 @@
-// render.js - Canvas visual renderer
+// render.js - Canvas visual renderer (Playhead 4 Blocks)
 
 const RenderEngine = (() => {
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
-
     let isRunning = false;
-    let visualTargets = []; // [{targetTime: float, hitStatus: 'none'|'hit'|'miss'}]
 
-    // Setup viewport/canvas dimensions dynamically
+    // Efeitos visuais para os 4 blocos (pulsar quando acerta)
+    let blockEffects = [0, 0, 0, 0];
+
     const resizeCanvas = () => {
-        // Encaixa no tamanho do wrapper
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
     };
     window.addEventListener('resize', resizeCanvas);
 
-    // Velocidade de queda. "2" Segundos de antecedência visível caindo.
-    const PREFALL_TIME = 2.0;
-
-    const spawnTarget = (audioTime) => {
-        visualTargets.push({
-            targetTime: audioTime,
-            hitStatus: 'none' // 'hit', 'miss' (usado para animar e esconder)
-        });
+    // Chamado pelo GameEngine
+    const spawnTarget = (time, index) => {
+        // Ignoramos a criação de objetos visuais caindo. A renderização agora é estática.
     };
 
-    const removeTarget = (audioTime, wasHit) => {
-        const t = visualTargets.find(t => Math.abs(t.targetTime - audioTime) < 0.01);
-        if (t) {
-            t.hitStatus = wasHit ? 'hit' : 'miss';
+    const removeTarget = (index, wasHit) => {
+        const boxIndex = index % 4; // Qual dos 4 blocos do compasso?
+        if (wasHit) {
+            blockEffects[boxIndex] = 1.0; // Inicia animação de pulso positivo
+        } else {
+            blockEffects[boxIndex] = -1.0; // Pulso negativo (erro)
         }
     };
 
     const drawFrame = () => {
         if (!isRunning) return;
-
-        // Limpa a tela
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Tempo atual do áudio (linha de chegada)
         const currentTime = AudioEngine.getCurrentAudioTime();
+        const startTime = AudioEngine.getStartTime();
 
-        // O GameEngine precisa chegar se perdeu notas
+        // Garante que o garbage collector de notas corra no render pass
         GameEngine.checkMisses(currentTime);
 
-        const trackX = canvas.width / 2;
-        const hitStartY = canvas.height - 100; // Onde fica a "Linha Central" de batida
+        const bps = AudioEngine.getBPM() / 60;
+        const beatDuration = 1 / bps;
 
-        // Desenha a zona alvo - Círculo na base
-        ctx.beginPath();
-        ctx.arc(trackX, hitStartY, 40, 0, Math.PI * 2);
+        let elapsedTime = currentTime - startTime;
+        if (elapsedTime < 0) elapsedTime = 0;
 
-        // Pulsa a zona alvo nos tempos pares (beats) se quisermos
-        const bps = GameEngine.getBPM() / 60;
-        const beatPulsar = (currentTime * bps) % 1;
+        // Progresso dentro de 1 semínima (0.0 no beat, 0.99 logo antes do próximo)
+        let beatProgress = (elapsedTime % beatDuration) / beatDuration;
 
-        ctx.fillStyle = `rgba(78, 205, 196, ${0.2 + (beatPulsar < 0.1 ? 0.3 : 0)})`;
-        ctx.fill();
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = 'var(--secondary-color)';
-        ctx.stroke();
+        // Configuração dos 4 Blocos Centrais (1 Beat dividido em 4 Semicolcheias)
+        const blockWidth = canvas.width > 600 ? 100 : Math.floor(canvas.width / 5);
+        const blockHeight = blockWidth;
+        const gap = 20;
+        const totalWidth = (4 * blockWidth) + (3 * gap);
+        const startX = (canvas.width - totalWidth) / 2;
+        const startY = (canvas.height - blockHeight) / 2;
 
-        // Obtém hitwindows em Segundos para desenhar sombras
-        const diffWins = GameEngine.getCurrentDifficultyObj();
+        const currentLevel = GameEngine.getCurrentLevel();
+        // Pegamos os 4 primeiros elementos do padrão (representam as 4 subdivisões)
+        const basePattern = currentLevel.pattern.slice(0, 4);
+        const labels = ['1', 'e', '&', 'a']; // Sílabas do método clássico
 
-        // Velocidade Y em Pixels por Segundo (A tela inteira até a linha representa PREFALL_TIME)
-        const PIXELS_PER_SEC = hitStartY / PREFALL_TIME;
+        // === 1. DESENHAR OS BLOCOS ===
+        for (let i = 0; i < 4; i++) {
+            const bx = startX + i * (blockWidth + gap);
+            const by = startY;
+            const isTarget = basePattern[i] === 'X';
 
-        // Desenhar indicador da janela 'Good'
-        const winHeightGood = diffWins.good * PIXELS_PER_SEC * 2; // Dobro pq é +/- offset do centro
-        ctx.fillStyle = 'rgba(241, 196, 15, 0.2)'; // amarelo
-        ctx.fillRect(trackX - 60, hitStartY - (winHeightGood / 2), 120, winHeightGood);
+            // Decair os efeitos de animação (pulso volta a 0)
+            if (blockEffects[i] > 0) blockEffects[i] = Math.max(0, blockEffects[i] - 0.05);
+            if (blockEffects[i] < 0) blockEffects[i] = Math.min(0, blockEffects[i] + 0.05);
 
-        // Desenhar indicador da janela 'Perfect'
-        const winHeightPerfect = diffWins.perfect * PIXELS_PER_SEC * 2;
-        ctx.fillStyle = 'rgba(46, 204, 113, 0.4)'; // verde
-        ctx.fillRect(trackX - 60, hitStartY - (winHeightPerfect / 2), 120, winHeightPerfect);
-
-        // Desenha os alvos caindo
-        visualTargets.forEach((target, index) => {
-            // Se já bateu e sumiu faz tempo, limpar da memoria
-            if (target.hitStatus !== 'none' && currentTime > target.targetTime + 0.5) {
-                target.deleteMe = true;
-                return;
-            }
-
-            // Distância em segundos entre onde o alvo deveria estar vs tempo atual (0 = agora, + = falta x seg, - = já passou)
-            let timeToHit = target.targetTime - currentTime;
-
-            // Se ainda não apareceu na tela (falta > que PREFALL_TIME)
-            if (timeToHit > PREFALL_TIME + 0.5) return;
-
-            // Y invertido. timeToHit positivo fica para "cima" (hitStartY - distanciaY)
-            let targetY = hitStartY - (timeToHit * PIXELS_PER_SEC);
-
-            // Animação de hit/miss
-            let scale = 1.0;
-            let alpha = 1.0;
-
-            if (target.hitStatus === 'hit') {
-                scale = 1.5;
-                alpha = 0.0; // Desaparece rápido num Puf
-            } else if (target.hitStatus === 'miss') {
-                alpha = 0.3; // Fica cinzinha chuvoso caindo infinito
-            }
+            let scale = 1.0 + (Math.abs(blockEffects[i]) * 0.2); // Aumenta 20% no hit/miss
 
             ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(trackX, targetY);
+            ctx.translate(bx + blockWidth / 2, by + blockHeight / 2);
             ctx.scale(scale, scale);
 
-            // Desenhar "A nota musical"
-            ctx.beginPath();
-            ctx.arc(0, 0, 30, 0, Math.PI * 2);
-            ctx.fillStyle = target.hitStatus === 'miss' ? '#BDC3C7' : '#FF6B6B';
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = 'white';
-            ctx.stroke();
+            // Cor base do bloco
+            if (isTarget) {
+                if (blockEffects[i] > 0) {
+                    ctx.fillStyle = '#2ecc71'; // Verde (Acertou!)
+                } else if (blockEffects[i] < 0) {
+                    ctx.fillStyle = '#e74c3c'; // Vermelho (Errou!)
+                } else {
+                    ctx.fillStyle = '#FF6B6B'; // Cor padrão do alvo a ser batido
+                }
+            } else {
+                ctx.fillStyle = '#E8F8F5'; // Bloco vazio inativo (cor bem levinha)
+            }
 
-            // Símbolo musical de semicolcheia
-            ctx.fillStyle = 'white';
-            ctx.font = '30px "Fredoka One"';
+            ctx.beginPath();
+            ctx.roundRect(-blockWidth / 2, -blockHeight / 2, blockWidth, blockHeight, 15);
+            ctx.fill();
+
+            // Borda do Alvo
+            if (isTarget) {
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+            }
+
+            // Texto interno (1, e, &, a)
+            ctx.fillStyle = isTarget ? 'white' : '#BDC3C7';
+            ctx.font = `bold ${blockWidth * 0.4}px "Fredoka One"`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('♪', 0, 2);
+            ctx.fillText(labels[i], 0, 5);
 
             ctx.restore();
-        });
+        }
 
-        // Limpeza de array (evitar VAZAMENTO de memoria do canvas array)
-        visualTargets = visualTargets.filter(t => !t.deleteMe);
+        // === 2. DESENHAR O PLAYHEAD (A AGULHA QUE VARRE O TEMPO) ===
+        // O playhead tem que cruzar exatamente o centro de cada bloco no momento certo.
+        // Bloco 0 = hit no beatProgress 0.0
+        // Bloco 1 = hit no beatProgress 0.25
+        // Bloco 2 = hit no beatProgress 0.50
+        // Bloco 3 = hit no beatProgress 0.75
+
+        // Posição central de cada bloco
+        const centers = [
+            startX + (0 * (blockWidth + gap)) + (blockWidth / 2),
+            startX + (1 * (blockWidth + gap)) + (blockWidth / 2),
+            startX + (2 * (blockWidth + gap)) + (blockWidth / 2),
+            startX + (3 * (blockWidth + gap)) + (blockWidth / 2)
+        ];
+
+        let playheadX = 0;
+        if (beatProgress < 0.25) {
+            let p = beatProgress / 0.25;
+            playheadX = centers[0] + (centers[1] - centers[0]) * p;
+        } else if (beatProgress < 0.50) {
+            let p = (beatProgress - 0.25) / 0.25;
+            playheadX = centers[1] + (centers[2] - centers[1]) * p;
+        } else if (beatProgress < 0.75) {
+            let p = (beatProgress - 0.50) / 0.25;
+            playheadX = centers[2] + (centers[3] - centers[2]) * p;
+        } else {
+            let p = (beatProgress - 0.75) / 0.25;
+            let centerNext = centers[3] + (blockWidth + gap);
+            playheadX = centers[3] + (centerNext - centers[3]) * p;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(playheadX, startY - 30);
+        ctx.lineTo(playheadX, startY + blockHeight + 30);
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(78, 205, 196, 0.8)'; // Teal
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(playheadX, startY - 30, 10, 0, Math.PI * 2);
+        ctx.fillStyle = '#4ECDC4';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(playheadX, startY + blockHeight + 30, 10, 0, Math.PI * 2);
+        ctx.fill();
 
         requestAnimationFrame(drawFrame);
     };
@@ -139,7 +165,7 @@ const RenderEngine = (() => {
         resizeCanvas();
         if (isRunning) return;
         isRunning = true;
-        visualTargets = [];
+        blockEffects = [0, 0, 0, 0];
         requestAnimationFrame(drawFrame);
     };
 

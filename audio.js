@@ -7,13 +7,15 @@ const AudioEngine = (() => {
     let dataArray = null;
 
     // Configurações do Metrônomo
+    // Configurações do Metrônomo
     let isPlaying = false;
-    let tempo = 90; // BPM base moderado para crianças
+    let tempo = 60; // BPM mais lento (60 = 1 batida por segundo) para aprendizado
     let lookahead = 25.0; // Em ms, quão frequente chamamos o scheduler
     let scheduleAheadTime = 0.1; // Em s, quão longe no futuro agendamos (100ms)
     let current16thNote = 0; // Qual nota (16 avos) estamos agora (0 a 15 por compasso)
     let nextNoteTime = 0.0; // Quando a próxima nota vai tocar
     let timerID = null;
+    let startTime = 0.0; // Ponto zero musical
 
     // Configurações de Detecção (Energy)
     let threshold = 50; // Limiar de volume (0 a 255)
@@ -136,7 +138,8 @@ const AudioEngine = (() => {
         isPlaying = true;
 
         // Pega o tempo atual e chuta a primeira nota um pouco pra frente
-        nextNoteTime = audioContext.currentTime + 0.1;
+        startTime = audioContext.currentTime + 0.1;
+        nextNoteTime = startTime;
         current16thNote = 0;
 
         scheduler();
@@ -163,12 +166,14 @@ const AudioEngine = (() => {
     // Funções auxiliares pro RenderEngine
     const getCurrentAudioTime = () => audioContext ? audioContext.currentTime : 0;
     const getBPM = () => tempo;
+    const getStartTime = () => startTime;
 
     return {
         init,
         start: startMetronome,
         stop,
         getCurrentAudioTime,
-        getBPM
+        getBPM,
+        getStartTime
     };
 })();

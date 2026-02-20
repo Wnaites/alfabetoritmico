@@ -19,21 +19,20 @@ const GameEngine = (() => {
     // [{ beatNumber: int, time: float, hit: boolean }]
     let scheduledNotes = [];
 
-    // O Alfabeto Rítmico (Simplificado para o Jogo)
-    // 1 Vazio = silêncio. 1 'X' = Nota a ser tocada.
-    // O padrão tem 16 posições correspondentes a um compasso 4/4 subdividido em semicolcheias
-    const patterns = [
-        // A - Semínimas
-        ['X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.'],
-        // B - Colcheias
-        ['X', '.', 'X', '.', 'X', '.', 'X', '.', 'X', '.', 'X', '.', 'X', '.', 'X', '.'],
-        // C - Offbeats
-        ['.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.'],
-        // D - Primeira e Terceira
-        ['X', '.', 'X', '.', '.', '.', '.', '.', 'X', '.', 'X', '.', '.', '.', '.', '.']
+    // O Alfabeto Rítmico (Alfabeto Ritmico Benny Greb - Reduzido para as fases iniciais MVP)
+    // Cada compasso 4/4 tem 16 semicolcheias (4 tempos x 4 subdivisões)
+    // X = Toque, . = Pausa
+    const levels = [
+        { letter: 'A', pattern: ['X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.'] }, // No Tempo (1)
+        { letter: 'B', pattern: ['.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.'] }, // No "e"
+        { letter: 'C', pattern: ['.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.'] }, // No "&"
+        { letter: 'D', pattern: ['.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X', '.', '.', '.', 'X'] }, // No "a"
+        { letter: 'E', pattern: ['X', 'X', '.', '.', 'X', 'X', '.', '.', 'X', 'X', '.', '.', 'X', 'X', '.', '.'] }, // 1 e
+        { letter: 'F', pattern: ['.', 'X', 'X', '.', '.', 'X', 'X', '.', '.', 'X', 'X', '.', '.', 'X', 'X', '.'] }  // e &
     ];
 
-    let currentPatternIndex = 0;
+    let currentLevelIndex = 0;
+    let measuresElapsed = 0; // Contagem de compassos tocados na fase atual
 
     const reset = (difficulty) => {
         score = 0;
@@ -42,13 +41,16 @@ const GameEngine = (() => {
         stats = { perfects: 0, goods: 0, misses: 0 };
         currentWindow = hitWindows[difficulty] || hitWindows.medium;
         scheduledNotes = [];
-        currentPatternIndex = 0; // Inicia nas semínimas sempre
+        currentLevelIndex = 0;
+        measuresElapsed = 0;
+
         UI.updateScore(score, combo);
+        UI.updateLetter(levels[currentLevelIndex].letter);
     };
 
     const registerMetronomeTick = (sixteenthIndex, time) => {
-        // Obter o padrão atual
-        const pattern = patterns[currentPatternIndex];
+        // Obter o padrão da fase atual
+        const pattern = levels[currentLevelIndex].pattern;
 
         // Se a subdivisão atual do metrônomo corresponder a um 'X' no padrão, agendamos um alvo!
         if (pattern[sixteenthIndex] === 'X') {
@@ -58,16 +60,27 @@ const GameEngine = (() => {
                 hit: false, // O jogador acertou essa?
                 missProcessed: false // Já descontamos os pontos de erro?
             });
-            // Avisa o renderizador que um bloco alvo precisa começar a cair
+            // Avisa o renderizador que uma nota foi agendada (se necessário)
             if (window.RenderEngine) {
-                RenderEngine.spawnTarget(time);
+                RenderEngine.spawnTarget(time, sixteenthIndex);
             }
         }
 
-        // Troca o padrão a cada 2 compassos inteiros (semicolcheia 0 significa reset do compasso)
-        // Simplificação MVP: só gira os padrões ad aeternum
-        if (sixteenthIndex === 15 && Math.random() > 0.5) {
-            currentPatternIndex = (currentPatternIndex + 1) % patterns.length;
+        // Cada vez que terminamos um compasso (sixteenth = 15)
+        if (sixteenthIndex === 15) {
+            measuresElapsed++;
+            // Mudar de Padrão (Fase) a cada 4 compassos
+            if (measuresElapsed >= 4) {
+                measuresElapsed = 0;
+                currentLevelIndex++;
+
+                // Se zerou as letras (Zerou o Jogo), volta pro A por enquanto (modo endless)
+                if (currentLevelIndex >= levels.length) {
+                    currentLevelIndex = 0;
+                }
+
+                UI.updateLetter(levels[currentLevelIndex].letter);
+            }
         }
     };
 
@@ -110,7 +123,7 @@ const GameEngine = (() => {
             UI.updateScore(score, combo);
             UI.showFeedback('perfect', 'Perfeito!');
             updateMaxCombo();
-            if (window.RenderEngine) RenderEngine.removeTarget(target.time, true);
+            if (window.RenderEngine) RenderEngine.removeTarget(target.index, true);
 
         } else if (diffTime <= currentWindow.good) {
             // Bom, quase cravado
@@ -121,7 +134,7 @@ const GameEngine = (() => {
             UI.updateScore(score, combo);
             UI.showFeedback('good', 'Bom!');
             updateMaxCombo();
-            if (window.RenderEngine) RenderEngine.removeTarget(target.time, true);
+            if (window.RenderEngine) RenderEngine.removeTarget(target.index, true);
 
         } else {
             // Fora da janela: Ignora este "hit" isolado para não roubar hits de alvos futuros próximos
@@ -139,7 +152,7 @@ const GameEngine = (() => {
                 stats.misses++;
                 breakCombo();
                 UI.showFeedback('late', 'Passou!');
-                if (window.RenderEngine) RenderEngine.removeTarget(target.time, false);
+                if (window.RenderEngine) RenderEngine.removeTarget(target.index, false);
             }
         }
 
@@ -163,6 +176,7 @@ const GameEngine = (() => {
         handlePlayerHit,
         checkMisses,
         getStats: () => ({ score, maxCombo, ...stats }),
-        getCurrentDifficultyObj: () => currentWindow
+        getCurrentDifficultyObj: () => currentWindow,
+        getCurrentLevel: () => levels[currentLevelIndex]
     };
 })();

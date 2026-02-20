@@ -20,7 +20,10 @@ const uiElements = {
     statPerfect: document.getElementById('stat-perfect'),
     statGood: document.getElementById('stat-good'),
     statMiss: document.getElementById('stat-miss'),
-    feedbackText: document.getElementById('feedback-text')
+    feedbackText: document.getElementById('feedback-text'),
+    currentLetter: document.getElementById('current-letter'),
+    countdownOverlay: document.getElementById('countdown-overlay'),
+    countdownText: document.getElementById('countdown-text')
 };
 
 // Estado Global App
@@ -50,18 +53,37 @@ function showScreen(screenName) {
 // Inicialização do Jogo
 btnStart.addEventListener('click', async () => {
     showScreen('play');
-    
-    // Iniciar Módulos (Definidos nos outros arquivos)
+
+    // Iniciar Áudio Context para permissões
     try {
-        await AudioEngine.init(); // Pede mic e cria contexto
-        GameEngine.start(AppState.difficulty);
-        RenderEngine.start();
-        AppState.isRunning = true;
+        await AudioEngine.init();
     } catch (err) {
         alert("Ops! Precisamos do microfone para sentir o seu ritmo. Recarregue a página e permita o acesso.");
         console.error("Erro ao iniciar áudio:", err);
         showScreen('start');
+        return;
     }
+
+    // Contagem Regressiva
+    uiElements.countdownOverlay.classList.remove('hidden');
+    let count = 3;
+    uiElements.countdownText.innerText = count;
+
+    const countInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            uiElements.countdownText.innerText = count;
+        } else if (count === 0) {
+            uiElements.countdownText.innerText = "JÁ!";
+        } else {
+            clearInterval(countInterval);
+            uiElements.countdownOverlay.classList.add('hidden');
+
+            GameEngine.start(AppState.difficulty);
+            RenderEngine.start();
+            AppState.isRunning = true;
+        }
+    }, 1000);
 });
 
 btnStop.addEventListener('click', () => {
@@ -77,7 +99,7 @@ function endGame() {
     RenderEngine.stop();
     AudioEngine.stop();
     AppState.isRunning = false;
-    
+
     // Atualizar stats finais
     const stats = GameEngine.getStats();
     uiElements.finalScore.innerText = stats.score;
@@ -100,8 +122,11 @@ window.UI = {
         fb.innerText = text;
         fb.className = ''; // reset
         // Timeout para forçar o re-flow do CSS caso animate pop rapidamente de novo
-        void fb.offsetWidth; 
+        void fb.offsetWidth;
         fb.classList.add(`anim-${type}`);
+    },
+    updateLetter: (letter) => {
+        uiElements.currentLetter.innerText = letter;
     },
     triggerEndGame: endGame
 };
