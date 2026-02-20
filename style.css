@@ -1,0 +1,199 @@
+:root {
+    --bg-color: #F0F8FF; /* AliceBlue */
+    --primary-color: #FF6B6B; /* Coral/Red */
+    --secondary-color: #4ECDC4; /* Teal */
+    --accent-color: #FFE66D; /* Yellow */
+    --text-color: #2D3436; /* Dark Grey */
+    --font-main: 'Fredoka One', cursive, sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-main);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 800px;
+    height: 100%;
+    max-height: 600px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    text-align: center;
+}
+
+.screen.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Typography styles */
+h1 {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+}
+
+h2 {
+    font-size: 2.5rem;
+    color: var(--secondary-color);
+}
+
+p {
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+
+/* Buttons */
+.main-btn {
+    background-color: var(--primary-color);
+    color: white;
+    font-family: var(--font-main);
+    font-size: 1.5rem;
+    padding: 15px 40px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 5px 0 darken(var(--primary-color), 10%);
+    transition: transform 0.1s, box-shadow 0.1s;
+    margin-top: 20px;
+}
+
+.main-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 0px 0 darken(var(--primary-color), 10%);
+}
+
+.small-btn {
+    background-color: #ddd;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-family: var(--font-main);
+    cursor: pointer;
+}
+
+/* Difficulty Selector */
+.difficulty-selector {
+    margin: 30px 0;
+    background: var(--bg-color);
+    padding: 20px;
+    border-radius: 15px;
+}
+
+.difficulty-selector h3 {
+    margin-top: 0;
+    color: var(--secondary-color);
+}
+
+.buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.diff-btn {
+    font-family: var(--font-main);
+    font-size: 1.1rem;
+    padding: 10px 20px;
+    border: 3px solid var(--secondary-color);
+    background: white;
+    color: var(--secondary-color);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.diff-btn.selected, .diff-btn:hover {
+    background: var(--secondary-color);
+    color: white;
+}
+
+/* Play Screen layout */
+.top-bar {
+    width: 90%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: absolute;
+    top: 20px;
+    z-index: 10;
+}
+
+.score-box, .combo-box {
+    font-size: 1.5rem;
+    background: rgba(255,255,255,0.8);
+    padding: 10px 20px;
+    border-radius: 15px;
+    border: 2px solid var(--accent-color);
+}
+
+.canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    /* Canvas specific drawing logic will define the visual grid */
+}
+
+#feedback-text {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4rem;
+    font-weight: bold;
+    pointer-events: none;
+    opacity: 0;
+    text-shadow: 3px 3px 0px rgba(0,0,0,0.2);
+}
+
+/* Animation classes applied via JS */
+@keyframes popFeedback {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+.anim-perfect { color: #2ecc71; animation: popFeedback 0.8s ease-out; }
+.anim-good { color: #f1c40f; animation: popFeedback 0.8s ease-out; }
+.anim-late { color: #e74c3c; animation: popFeedback 0.8s ease-out; }
+.anim-miss { color: #7f8c8d; animation: popFeedback 0.8s ease-out; }
+
+/* Mic Note */
+.mic-warning {
+    font-size: 0.9rem;
+    color: #888;
+    margin-top: 15px;
+}

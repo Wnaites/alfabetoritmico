@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfabeto Rítmico - O Jogo!</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Fonte lúdica para crianças -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Tela Inicial -->
+        <div id="start-screen" class="screen active">
+            <h1>Alfabeto Rítmico</h1>
+            <p>Aprenda o tempo musical de forma divertida!</p>
+            
+            <div class="difficulty-selector">
+                <h3>Escolha sua idade:</h3>
+                <div class="buttons">
+                    <button class="diff-btn" data-level="easy">4 a 6 anos</button>
+                    <button class="diff-btn selected" data-level="medium">7 a 10 anos</button>
+                    <button class="diff-btn" data-level="hard">11+ anos</button>
+                </div>
+            </div>
+
+            <button id="btn-start-game" class="main-btn">Começar a Jogar!</button>
+            <p class="mic-warning">Este jogo precisa do seu microfone para ouvir você tocar! 🎤</p>
+        </div>
+
+        <!-- Tela do Jogo Principal -->
+        <div id="play-screen" class="screen">
+            <div class="top-bar">
+                <div class="score-box">Pontuação: <span id="score">0</span></div>
+                <div class="combo-box">Combo: <span id="combo">0</span>x</div>
+                <button id="btn-stop-game" class="small-btn">Sair</button>
+            </div>
+
+            <!-- Área principal de renderização do jogo visual -->
+            <div class="canvas-wrapper">
+                <canvas id="game-canvas"></canvas>
+                <!-- Feedback visual text level overlaid on canvas -->
+                <div id="feedback-text"></div>
+            </div>
+
+            <div class="instructions">
+                Mantenha o ritmo! Toque seu instrumento junto com as batidas.
+            </div>
+        </div>
+        
+        <!-- Tela de Fim de Jogo -->
+        <div id="end-screen" class="screen">
+            <h2>Fim de Jogo!</h2>
+            <div class="final-stats">
+                <p>Sua Pontuação Final: <span id="final-score">0</span></p>
+                <p>Maior Combo: <span id="final-combo">0</span>x</p>
+                <div class="accuracy-breakdown">
+                    <p>Perfeitos: <span id="stat-perfect">0</span></p>
+                    <p>Bons: <span id="stat-good">0</span></p>
+                    <p>Erros: <span id="stat-miss">0</span></p>
+                </div>
+            </div>
+            <button id="btn-restart" class="main-btn">Jogar Novamente</button>
+        </div>
+    </div>
+
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+    <script src="render.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
